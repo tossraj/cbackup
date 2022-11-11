@@ -19,7 +19,6 @@ else
     mkdir -p /var/log/cbackup/;
 fi
 
-wget -q http://onliveinfotech.com/all-backup/cbackup.sh
 chmod +x cbackup.sh
 mv cbackup.sh /usr/local/bin/cbackup
 echo "[OK] backup script updated ..."
