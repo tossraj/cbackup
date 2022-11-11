@@ -25,8 +25,10 @@ echo "[OK] backup script updated ..."
 
 if [ -f "/etc/cbackup/cbackup.conf" ]; then
     echo "[OK] Config file updated ..."
-else 
-    wget -q http://onliveinfotech.com/all-backup/cbackup.conf;
+else
     mv cbackup.conf /etc/cbackup/;
 fi
 echo "[OK] Backup package updated successfully..."
+
+cd ..
+rm -rf cbackup/
