@@ -163,8 +163,14 @@ userbackup () {
         # ls -l --block-size=M /$HOSTNAME/$month/;
         echo $(date +"[%Y-%m-%d %T %z]")" The backup is ready to be uploaded..."
         echo $(date +"[%Y-%m-%d %T %z]")" Backup upload process in progress..."
-        sshpass -p $PASS scp -r /$HOSTNAME $SITO;
-        echo $(date +"[%Y-%m-%d %T %z]")" Backup file uploaded successfully..."
+        if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
+        then
+            cp /$HOSTNAME/$month/* $RPTH;
+            echo $(date +"[%Y-%m-%d %T %z]")" Backup file moved successfully..."
+        else
+            sshpass -p $PASS scp -r /$HOSTNAME $SITO;
+            echo $(date +"[%Y-%m-%d %T %z]")" Backup file uploaded successfully..."
+        fi
         tput bold
         tput setaf 2
         echo "("$((COUNTER++))"/"$CNT")" $(getusername $usr) cPanel backup created successfully...
