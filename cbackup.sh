@@ -165,7 +165,7 @@ userbackup () {
         echo $(date +"[%Y-%m-%d %T %z]")" Backup upload process in progress..."
         if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
         then
-            cp /$HOSTNAME/$month/* $RPTH;
+            cp /$HOSTNAME/$month/* $RPTH/$HOSTNAME/$month/;
             echo $(date +"[%Y-%m-%d %T %z]")" Backup file moved successfully..."
         else
             sshpass -p $PASS scp -r /$HOSTNAME $SITO;
