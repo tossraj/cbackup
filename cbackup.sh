@@ -127,8 +127,7 @@ LDTE=$(date +"%Y-%m-%d");
 LLOG="/var/log/cbackup/cbackup-"$LDTE"-move.log";
 SITO=$USER"@"$HOST":"$RPTH;
 month=$(date +%d-%m-20%y);
-SCSL="/var/log/cbackup/success-CPANEL-"$LDTE"-user.log";
-MYSQLSCSL="/var/log/cbackup/success-MYSQL-"$LDTE".log";
+SCSL="/var/log/cbackup/success-"$LDTE"-user.log";
 
 totalcount () {
     cd /var/cpanel/users
@@ -151,8 +150,7 @@ userbackup () {
     usr=$1
     COUNTER=$((COUNTER));
     if [ ! -f abc.txt ]; then touch $SCSL $LLOG; else echo 'exists'; fi
-    if [[ ! $2 == 'force' ]]; then chklog="success cpmove-"$usr.tar.gz"; else chklog=""; fi
-    if grep -q $chklog /var/log/cbackup/success-CPANEL-*;
+    if grep -q "success cpmove-"$usr".tar.gz" /var/log/cbackup/success-*;
     then
         tput bold
         tput setaf 2
@@ -161,19 +159,14 @@ userbackup () {
     else
         rm -rf /$HOSTNAME/*;
         mkdir -p /$HOSTNAME/$month;
-        if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
-        then
-            /scripts/pkgacct $usr $RPTH/$HOSTNAME/$month;
-        else
-            /scripts/pkgacct $usr /$HOSTNAME/$month;
-        fi
+        /scripts/pkgacct $usr /$HOSTNAME/$month;
         # ls -l --block-size=M /$HOSTNAME/$month/;
         echo $(date +"[%Y-%m-%d %T %z]")" The backup is ready to be uploaded..."
         echo $(date +"[%Y-%m-%d %T %z]")" Backup upload process in progress..."
         if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
         then
-            # cp -R /$HOSTNAME $RPTH;
-            echo $(date +"[%Y-%m-%d %T %z]")" The backup file has been successfully generated at the given path..."
+            cp -R /$HOSTNAME $RPTH;
+            echo $(date +"[%Y-%m-%d %T %z]")" Backup file moved successfully..."
         else
             sshpass -p $PASS scp -r /$HOSTNAME $SITO;
             echo $(date +"[%Y-%m-%d %T %z]")" Backup file uploaded successfully..."
@@ -195,7 +188,6 @@ userbackup () {
 
 #Parses all users through cPanel's users file
 all () {
-    frc=$1
     tput bold
     tput setaf 12
     echo "Please wait Searching cPanel accounts ....."
@@ -218,12 +210,7 @@ all () {
         cd /var/cpanel/users
         for users in *
         do
-            if [[ $frc == 'force' ]]
-            then
-                userbackup $users force
-            else
-                userbackup $users
-            fi
+            userbackup $users
         done
         echo -e "cPnael user backup\nThe backup process is now complete on "$HOSTNAME"\nYou can see the log which is attached in the mail\nFor get success log\n\nTry this cmd on shell \n---------------------------------------------------------------\nless "$SCSL"\n---------------------------------------------------------------\n\nOnlive Server backup system v"$VERSION | mail -s "Auto backup done..." $RCPT;
     else
@@ -244,12 +231,7 @@ check() {
     tput sgr0
     ussr=$1;
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
-    if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
-    then
-        printTable ' ' "$(echo "SIZE DATE PATH\n"; find / -type f -name "cpmove-'$ussr'.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \; |  awk '{print $5,$6,$9}')";
-    else
-        printTable ' ' "$(echo "SIZE DATE PATH\n"; sshpass -p $PASS ssh $USER"@"$HOST 'find / -type f -name "cpmove-'$ussr'.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \;' |  awk '{print $5,$6,$9}')";
-    fi
+    printTable ' ' "$(echo "SIZE DATE PATH\n"; sshpass -p $PASS ssh $USER"@"$HOST 'find / -type f -name "cpmove-'$ussr'.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \;' |  awk '{print $5,$6,$9}')";
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
 }
 
@@ -261,47 +243,31 @@ restore() {
     tput sgr0
     bkppath=$1;
     usrname=$2;
-    if [[ ! "$HOST" == "localhost" ]] || [[ ! "$HOST" == "127.0.0.1" ]]
-    then
-        sshpass -p $PASS scp $USER"@"$HOST":"$bkppath .;
-    fi
+    sshpass -p $PASS scp $USER"@"$HOST":"$bkppath .;
     tput bold
     tput setaf 12
     echo "Backup downloaded successfully ....."
     echo "Starting restoration ....."
     tput sgr0
-    if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
-    then        
-        /scripts/restorepkg --force $usrname $bkppath;
-    else
-        /scripts/restorepkg --force $usrname ./$(basename "${bkppath%*}");
-        rm -f ./$(basename "${bkppath%*}");
-    fi
+    /scripts/restorepkg --force $usrname ./$(basename "${bkppath%*}");
+    rm -f ./$(basename "${bkppath%*}");
 }
 
 download() {
-    if [[ ! "$HOST" == "localhost" ]] || [[ ! "$HOST" == "127.0.0.1" ]]
-    then
-        tput bold
-        tput setaf 12
-        echo "Please wait connecting to backup server ....."
-        echo "Backup is downloading from backup server ....."
-        tput sgr0
-        bkppath=$1;
-        usrname=$2;
-        sshpass -p $PASS scp $USER"@"$HOST":"$bkppath .;
-        tput bold
-        tput setaf 12
-        echo "Backup downloaded successfully ....."
-        tput sgr0
-        printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
-        ls -l | grep "$(basename "${bkppath%*}")";
-    else
-        tput bold
-        tput setaf 12
-        echo "your backup is on localhost ....."
-        tput sgr0
-    fi
+    tput bold
+    tput setaf 12
+    echo "Please wait connecting to backup server ....."
+    echo "Backup is downloading from backup server ....."
+    tput sgr0
+    bkppath=$1;
+    usrname=$2;
+    sshpass -p $PASS scp $USER"@"$HOST":"$bkppath .;
+    tput bold
+    tput setaf 12
+    echo "Backup downloaded successfully ....."
+    tput sgr0
+    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
+    ls -l | grep "$(basename "${bkppath%*}")";
 }
 
 search () {
@@ -312,42 +278,31 @@ search () {
     tput sgr0
     key=$1;
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
-    if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
-    then        
-        find / -type f -name "user-domain-profile-*.txt" -exec cat {} \; | grep "$key" | sort --unique;
-    else
-        sshpass -p $PASS ssh $USER"@"$HOST 'find / -type f -name "user-domain-profile-*.txt" -exec cat {} \; | grep "'$key'" | sort --unique';
-    fi
+    sshpass -p $PASS ssh $USER"@"$HOST 'find / -type f -name "user-domain-profile-*.txt" -exec cat {} \; | grep "'$key'" | sort --unique';
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
 }
 
 #Main function, switches options passed to it
 case "$1" in
     -h) helptext;;
-    --help) helptext;;
-    --search) search $2;;
-    --all)
+    --help) helptext
+
     case "$2" in
-        "") all &>> $LLOG | tail -f $LLOG;;
-        --force) all force &>> $LLOG | tail -f $LLOG;;
-        *) echo "Invalid Option!";;
-    esac;;     
-    --account) 
-        case "$3" in
-        "") userbackup "$2" &>> $LLOG | tail -f $LLOG;;
-        --force) userbackup "$2" force &>> $LLOG | tail -f $LLOG;;
-        --check) check $2;;
-        --restore) restore $4 $2;;
-        --download) download $4 $2;;
-            * ) tput bold
+        --all) all &>> $LLOG | tail -f $LLOG;;
+        --account) userbackup "$3" &>> $LLOG | tail -f $LLOG;;
+        -a) userbackup "$3" &>> $LLOG | tail -f $LLOG;;
+        *) tput bold
               tput setaf 1
           echo "Invalid Option!"
           helptext;;
-        esac;;
+    esac;;
+
+    --all) all &>> $LLOG | tail -f $LLOG;;
+    --search) search $2;;
+    --account) userbackup "$2" &>> $LLOG | tail -f $LLOG;;
     -a)
         case "$3" in
         "") userbackup "$2" &>> $LLOG | tail -f $LLOG;;
-        --force) userbackup "$2" force &>> $LLOG | tail -f $LLOG;;
         --check) check $2;;
         --restore) restore $4 $2;;
         --download) download $4 $2;;
