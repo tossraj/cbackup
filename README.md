@@ -17,14 +17,8 @@ First install [SSHPASS](#) and then install this plugin and once connect menuall
 
 ```bash
 git clone https://github.com/tossraj/cbackup.git
-```
-```bash
 cd cbackup
-```
-```bash
 chmod +x install.sh
-```
-```bash
 ./install.sh
 ```
 ## Uses
