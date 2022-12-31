@@ -159,14 +159,19 @@ userbackup () {
     else
         rm -rf /$HOSTNAME/*;
         mkdir -p /$HOSTNAME/$month;
-        /scripts/pkgacct $usr /$HOSTNAME/$month;
-        # ls -l --block-size=M /$HOSTNAME/$month/;
-        echo $(date +"[%Y-%m-%d %T %z]")" The backup is ready to be uploaded..."
-        echo $(date +"[%Y-%m-%d %T %z]")" Backup upload process in progress..."
+        if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
+        then            
+            /scripts/pkgacct $usr $RPTH/$HOSTNAME/$month;
+        else
+            /scripts/pkgacct $usr /$HOSTNAME/$month;
+            # ls -l --block-size=M /$HOSTNAME/$month/;
+            echo $(date +"[%Y-%m-%d %T %z]")" The backup is ready to be uploaded..."
+            echo $(date +"[%Y-%m-%d %T %z]")" Backup upload process in progress..."
+        fi
         if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
         then
-            cp -R /$HOSTNAME $RPTH;
-            echo $(date +"[%Y-%m-%d %T %z]")" Backup file moved successfully..."
+            # cp -R /$HOSTNAME $RPTH;
+            echo $(date +"[%Y-%m-%d %T %z]")" Backup file has been successfully created at the given path..."
         else
             sshpass -p $PASS scp -r /$HOSTNAME $SITO;
             echo $(date +"[%Y-%m-%d %T %z]")" Backup file uploaded successfully..."
