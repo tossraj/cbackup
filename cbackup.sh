@@ -82,6 +82,13 @@ create_users () {
 
 #Print the help text
 helptext () {
+    if [[ $1 == 'optn']]; 
+    then
+    tput bold
+    tput setaf 1
+    echo "Invalid Option!";
+    tput sgr0
+    fi
     tput bold
     tput setaf 2
         printf "\ncPanel backup Create and upload, Check, Restore from remote server:\n"
@@ -287,39 +294,146 @@ search () {
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
 }
 
+function mysql_user_export_log () {
+    username=$1; filename=$2; dirname=$3;
+    if [ -f "$dirname/$filename" ];
+    then
+        sTYP="MYSQL Backup success for "$username": "$filename;
+    else
+        sTYP="MYSQL Backup ..ERROR for "$username": "$filename;
+    fi
+    echo $(date +"[%Y-%m-%d %T %z]") $sTYP >> $MYSQLSCSL;
+}
+
+function mysql_user_db () {
+    usr=$1
+    if [[ ! -f $MYSQLSCSL ]]; then touch $MYSQLSCSL; fi
+    if [[ ! $2 == 'force' ]]; then chklog="MYSQL Backup success for "$usr; else chklog="none"; fi
+    if grep -qF "$chklog" /var/log/cbackup/success-MYSQL-*;
+    then
+        tput bold
+        tput setaf 2
+        echo "("$((COUNTER++))"/"$CNT")" $(getusername $usr) "MYSQL backup already exists ..."
+        tput sgr0
+    else
+        rm -rf /$HOSTNAME/*;
+        mysqlc=$(uapi --user=$usr Mysql list_databases | grep 'database: ' | cut -d ":" -f 2 | sed 's/[[:space:]]//g' | wc -l);
+        echo $(date +"[%Y-%m-%d %T %z]")" Total ("$mysqlc") databases of user "$usr" found";
+        mysql=$(uapi --user=$usr Mysql list_databases | grep 'database: ' | cut -d ":" -f 2 | sed 's/[[:space:]]//g');
+        if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
+        then
+            dirname=$RPTH/$HOSTNAME/mysql/$month/$usr;
+            mkdir -p $dirname;
+            for DB in $mysql; do
+                mysqldump $DB > "$RPTH/$HOSTNAME/mysql/$month/$usr/$DB.sql";
+                mysql_user_export_log $usr "$DB.sql" $dirname;
+                echo $(date +"[%Y-%m-%d %T %z]")" Created successfully $DB.sql..."
+            done
+        else
+            dirname=/$HOSTNAME/mysql/$month/$usr;
+            mkdir -p $dirname;
+            for DB in $mysql; do
+                mysqldump $DB > "/$HOSTNAME/mysql/$month/$usr/$DB.sql";
+                mysql_user_export_log $usr "$DB.sql" $dirname;
+                echo $(date +"[%Y-%m-%d %T %z]")" Created successfully $DB.sql..."
+            done
+        fi
+        # ls -l --block-size=M /$HOSTNAME/$month/;
+        echo $(date +"[%Y-%m-%d %T %z]")" The backup is ready to be uploaded..."
+        echo $(date +"[%Y-%m-%d %T %z]")" Backup upload process in progress..."
+        if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
+        then
+            # cp -R /$HOSTNAME $RPTH;
+            echo $(date +"[%Y-%m-%d %T %z]")" The backup file has been successfully generated at the given path..."
+        else
+            sshpass -p $PASS scp -r /$HOSTNAME $SITO;
+            echo $(date +"[%Y-%m-%d %T %z]")" Backup file uploaded successfully..."
+        fi
+        tput bold
+        tput setaf 2
+        echo "("$((COUNTER++))"/"$CNT")" $(getusername $usr) "MYSQL backup for cPanel user created successfully..."
+        tput sgr0
+    fi
+    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' -;
+}
+
+# Parses all users through cPanel's users file
+function mysql_all_db () {
+    frc=$1
+    tput bold
+    tput setaf 12
+    echo "Please wait Searching databases ....."
+    tput sgr0
+    tput bold
+    tput setaf 12
+    echo "Extracting MySQL Database ....."
+    echo "MYSQL backup process start ....."
+    tput sgr0
+
+    if [[ $(wget -q -t 1 --spider --dns-timeout 3 --connect-timeout 10  $HOST:$PORT; echo $?) -eq 0 ]];
+    then
+        echo -e "MYSQL extraction in progress...\nMYSQL extraction process is running for all cPanel users at "$HOSTNAME" ...\n---------------------------------------------------------------\ntail -f "$LLOG"\n---------------------------------------------------------------\n\nAn email will come shortly after the backup is complete\nPlease wait for the next update...\nIf you do not get the next mail after log time then,\nyou can trace running process or leave a mail toe shiv@onliveinfotech.com\n\nOnlive Server auto backup program v"$VERSION | mail -s "Auto backup start..." $RCPT;
+        cd /var/cpanel/users
+        for users in *
+        do
+            if [[ $frc == 'force' ]]
+            then
+                mysql_user_db $users force
+            else
+                mysql_user_db $users
+            fi
+        done
+        echo -e "MYSQL extraction\nThe MYSQL backup process is now completed on "$HOSTNAME"\nYou can see the log which is attached in the mail\nFor get success log\n\nTry this cmd on shell \n---------------------------------------------------------------\nless "$MYSQLSCSL"\n---------------------------------------------------------------\n\nOnlive Server backup system v"$VERSION | mail -s "Auto backup done..." $RCPT;
+    else
+        echo -e "[Error] The MYSQL backup process failed due to a network error... \nExiting..."
+        echo -e "MYSQL Backup process...\nThe backup process failed due to a network error... "$HOSTNAME" ...\n\nOnlive Server auto backup program v"$VERSION | mail -s "Auto backup start..." $RCPT;
+        exit 0
+    fi
+}
+
 #Main function, switches options passed to it
 case "$1" in
     -h) helptext;;
-    --help) helptext
-
-    case "$2" in
-        --all) all &>> $LLOG | tail -f $LLOG;;
-        --account) userbackup "$3" &>> $LLOG | tail -f $LLOG;;
-        -a) userbackup "$3" &>> $LLOG | tail -f $LLOG;;
-        *) tput bold
-              tput setaf 1
-          echo "Invalid Option!"
-          helptext;;
-    esac;;
-
-    --all) all &>> $LLOG | tail -f $LLOG;;
+    --help) helptext;;
+    --all) 
+        case "$2" in
+            "") all &>> $LLOG | tail -f $LLOG;;
+            --sql) 
+            case "$3" in 
+                "") mysql_all_db;;
+                --force) mysql_all_db force;;
+                *) helptext optn;;
+            esac;;
+            *) helptext optn;;
+        esac;;    
     --search) search $2;;
-    --account) userbackup "$2" &>> $LLOG | tail -f $LLOG;;
+    --account)
+        case "$3" in
+        "") userbackup "$2" &>> $LLOG | tail -f $LLOG;;
+        --check) check $2;;
+        --sql) 
+            case "$4" in
+            "") mysql_user_db $2;;
+            --force) mysql_user_db $2 force;;
+            *) helptext optn;;
+            esac;;
+        --restore) restore $4 $2;;
+        --download) download $4 $2;;
+        * ) helptext optn;;
+        esac;;
     -a)
         case "$3" in
         "") userbackup "$2" &>> $LLOG | tail -f $LLOG;;
         --check) check $2;;
+        --sql) 
+            case "$4" in
+            "") mysql_user_db $2;;
+            --force) mysql_user_db $2 force;;
+            *) helptext optn;;
+            esac;;
         --restore) restore $4 $2;;
         --download) download $4 $2;;
-            * ) tput bold
-              tput setaf 1
-          echo "Invalid Option!"
-          helptext;;
+        * ) helptext optn;;
         esac;;
-    *)
-      tput bold
-      tput setaf 1
-      echo "Invalid Option!";
-      tput sgr0
-      helptext;;
+    *) helptext optn;;
 esac
