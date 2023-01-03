@@ -1,3 +1,5 @@
+#!/bin/bash
+
 function printTable()
 {
     local -r delimiter="${1}"
@@ -72,7 +74,7 @@ function trimString()
     sed 's,^[[:blank:]]*,,' <<< "${string}" | sed 's,[[:blank:]]*$,,'
 }
 
-create_users () {
+function create_users () {
     cd /var/cpanel/users
     for user in *;
     do grep $user /etc/trueuserowners;
@@ -81,14 +83,16 @@ create_users () {
 }
 
 #Print the help text
-helptext () {
-    if [[ $1 == 'optn']]; 
+function helptext () {
+    optin=$1
+    if [[ "$optin" == "optn" ]]
     then
-    tput bold
-    tput setaf 1
-    echo "Invalid Option!";
-    tput sgr0
+        tput bold
+        tput setaf 1
+        echo "Invalid Option!";
+        tput sgr0
     fi
+    
     tput bold
     tput setaf 2
         printf "\ncPanel backup Create and upload, Check, Restore from remote server:\n"
@@ -107,7 +111,7 @@ helptext () {
     exit 0
 }
 
-getusername () {
+function getusername () {
     path=$1
     tput bold
     tput setaf 12
@@ -115,7 +119,7 @@ getusername () {
     tput sgr0
 }
 
-getcbackupconfdata () {
+function getcbackupconfdata () {
     FIND=$1
     value_of_prop1=`grep $FIND /etc/cbackup/cbackup.conf| cut -f2 -d "=" | cut -f2 -d ">"`
     echo $value_of_prop1;
@@ -134,9 +138,10 @@ LDTE=$(date +"%Y-%m-%d");
 LLOG="/var/log/cbackup/cbackup-"$LDTE"-move.log";
 SITO=$USER"@"$HOST":"$RPTH;
 month=$(date +%d-%m-20%y);
-SCSL="/var/log/cbackup/success-"$LDTE"-user.log";
+SCSL="/var/log/cbackup/success-CPANEL-"$LDTE"-user.log";
+MYSQLSCSL="/var/log/cbackup/success-MYSQL-"$LDTE".log";
 
-totalcount () {
+function totalcount () {
     cd /var/cpanel/users
     COUNT=$(ls | wc -l);
     echo $COUNT
@@ -153,7 +158,7 @@ then
     CNT="0";
 fi
 
-userbackup () {
+function userbackup () {
     usr=$1
     COUNTER=$((COUNTER));
     if [ ! -f abc.txt ]; then touch $SCSL $LLOG; else echo 'exists'; fi
@@ -199,7 +204,7 @@ userbackup () {
 }
 
 #Parses all users through cPanel's users file
-all () {
+function all () {
     tput bold
     tput setaf 12
     echo "Please wait Searching cPanel accounts ....."
@@ -232,7 +237,7 @@ all () {
     fi
 }
 
-check() {
+function check() {
     tput bold
     tput setaf 12
     echo "Please wait connecting to backup server ....."
@@ -247,7 +252,7 @@ check() {
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
 }
 
-restore() {
+function restore() {
     tput bold
     tput setaf 12
     echo "Please wait connecting to backup server ....."
@@ -265,7 +270,7 @@ restore() {
     rm -f ./$(basename "${bkppath%*}");
 }
 
-download() {
+function download() {
     tput bold
     tput setaf 12
     echo "Please wait connecting to backup server ....."
@@ -282,7 +287,7 @@ download() {
     ls -l | grep "$(basename "${bkppath%*}")";
 }
 
-search () {
+function search () {
     tput bold
     tput setaf 12
     echo "Please wait connecting to backup server ....."
