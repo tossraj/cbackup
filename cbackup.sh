@@ -182,7 +182,7 @@ function userbackup () {
         fi
         if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
         then
-            # cp -R /$HOSTNAME $RPTH;
+            cp -R /$HOSTNAME $RPTH;
             echo $(date +"[%Y-%m-%d %T %z]")" Backup file has been successfully created at the given path..."
         else
             sshpass -p $PASS scp -r /$HOSTNAME $SITO;
