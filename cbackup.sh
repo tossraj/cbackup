@@ -247,8 +247,13 @@ function check() {
     echo "Searching ... backup of "$1"" .....
     tput sgr0
     ussr=$1;
-    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
-    printTable ' ' "$(echo "SIZE DATE PATH\n"; sshpass -p $PASS ssh $USER"@"$HOST 'find / -type f -name "cpmove-'$ussr'.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \;' |  awk '{print $5,$6,$9}')";
+    printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;    
+    if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
+    then
+        printTable ' ' "$(echo "SIZE DATE PATH\n"; find / -type f -name "cpmove-'$ussr'.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \; |  awk '{print $5,$6,$9}')";
+    else
+        printTable ' ' "$(echo "SIZE DATE PATH\n"; sshpass -p $PASS ssh $USER"@"$HOST 'find / -type f -name "cpmove-'$ussr'.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \;' |  awk '{print $5,$6,$9}')";
+    fi
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
 }
 
@@ -260,12 +265,23 @@ function restore() {
     tput sgr0
     bkppath=$1;
     usrname=$2;
-    sshpass -p $PASS scp $USER"@"$HOST":"$bkppath .;
-    tput bold
-    tput setaf 12
-    echo "Backup downloaded successfully ....."
-    echo "Starting restoration ....."
-    tput sgr0
+    
+    if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
+    then            
+        cp $bkppath .;
+        tput bold
+        tput setaf 12
+        echo "Backup moved successfully ....."
+        echo "Starting restoration ....."
+        tput sgr0
+    else            
+        sshpass -p $PASS scp $USER"@"$HOST":"$bkppath .;
+        tput bold
+        tput setaf 12
+        echo "Backup downloaded successfully ....."
+        echo "Starting restoration ....."
+        tput sgr0
+    fi
     /scripts/restorepkg --force $usrname ./$(basename "${bkppath%*}");
     rm -f ./$(basename "${bkppath%*}");
 }
@@ -278,11 +294,20 @@ function download() {
     tput sgr0
     bkppath=$1;
     usrname=$2;
-    sshpass -p $PASS scp $USER"@"$HOST":"$bkppath .;
-    tput bold
-    tput setaf 12
-    echo "Backup downloaded successfully ....."
-    tput sgr0
+    if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
+    then        
+        cp $bkppath .;
+        tput bold
+        tput setaf 12
+        echo "Backup downloaded successfully ....."
+        tput sgr0
+    else
+        sshpass -p $PASS scp $USER"@"$HOST":"$bkppath .;
+        tput bold
+        tput setaf 12
+        echo "Backup downloaded successfully ....."
+        tput sgr0
+    fi
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;
     ls -l | grep "$(basename "${bkppath%*}")";
 }
