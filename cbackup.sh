@@ -250,7 +250,7 @@ function check() {
     printf '%*s\n' "${COLUMNS:-$(tput cols)}" '' | tr ' ' - ;    
     if [[ "$HOST" == "localhost" ]] || [[ "$HOST" == "127.0.0.1" ]]
     then
-        printTable ' ' "$(echo "SIZE DATE PATH\n"; find / -type f -name "cpmove-'$ussr'.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \; |  awk '{print $5,$6,$9}')";
+        printTable ' ' "$(echo "SIZE DATE PATH\n"; find / -type f -name "cpmove-$ussr.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \; |  awk '{print $5,$6,$9}')";
     else
         printTable ' ' "$(echo "SIZE DATE PATH\n"; sshpass -p $PASS ssh $USER"@"$HOST 'find / -type f -name "cpmove-'$ussr'.tar.gz" -exec ls -l --block-size="M" --full-time --sort="time" {} \;' |  awk '{print $5,$6,$9}')";
     fi
