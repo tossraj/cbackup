@@ -205,6 +205,11 @@ function userbackup () {
 
 #Parses all users through cPanel's users file
 function all () {
+    if [ -z "$1" ]; then
+        usr="*"
+    else
+        usr="$1"
+    fi
     tput bold
     tput setaf 12
     echo "Please wait Searching cPanel accounts ....."
@@ -225,7 +230,7 @@ function all () {
     then
         echo -e "cPanel User Backup...\nThe backup process is running for all cPanel users at "$HOSTNAME" ...\nIf you want to see runningprocess\n\nTry this cmd on shell \n---------------------------------------------------------------\ntail -f "$LLOG"\n---------------------------------------------------------------\n\nAn email will come shortly after the backup is complete\nPlease wait for the next update...\nIf you do not get the next mail after log time then,\nyou can trace running process or leave a mail toe shiv@onliveinfotech.com\n\nOnlive Server auto backup program v"$VERSION | mail -s "Auto backup start..." $RCPT;
         cd /var/cpanel/users
-        for users in *
+        for users in $usr
         do
             userbackup $users
         done
@@ -428,6 +433,7 @@ case "$1" in
     --all) 
         case "$2" in
             "") all &>> $LLOG | tail -f $LLOG;;
+            "") all $3 &>> $LLOG | tail -f $LLOG;;
             --sql) 
             case "$3" in 
                 "") mysql_all_db;;
